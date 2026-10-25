@@ -31,6 +31,23 @@ Tap Practice listens for two bars, gives you a four-beat count-in, then starts y
 
 Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
 
+## Note streaks and perfect rounds
+
+Tap Practice shows a large **Note streak** counter above the tap pad, with the
+best streak from this visit. It carries between rounds while the loop runs.
+Matched notes count toward the same streak goals as the arcade missions;
+count-in warmups and written rests do not add notes or break a streak.
+Missing a note or adding an extra tap resets the counter. Stop, changing modes,
+or changing the rhythm/tempo starts a new streak, while the visit's best remains.
+
+A completed round celebrates with a confetti splash when every note is matched
+and there are no misses, extra taps, or early/late timing marks. All-rest rounds
+do not trigger confetti. The effect does not interrupt input or add sounds.
+Reduced motion, or the arcade's saved Motion: Off setting, uses a static perfect
+badge. Effects stop when the loop stops or the page is hidden.
+
+Feedback checks: `python3 tests/rhythm-feedback-browser.py`.
+
 ## Classroom privacy
 
 Rhythm Room keeps gameplay local and does not use Firebase or public score services. When embedded in a same-origin Coda classroom, it inherits the parent's scoped progress store before reading practice history, and reports completed rounds through the existing arcade bridge. Standalone play remains local.
