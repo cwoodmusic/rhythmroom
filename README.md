@@ -25,6 +25,12 @@ Select rhythm building blocks, choose a tempo and instrument, and start the loop
 
 Single eighth notes unlock basic syncopations when the other required note types are selected. Paired eighth notes alone do not. Adjacent short notes are beamed and consecutive rests are consolidated while preserving beat boundaries. Dotted sixteenth notes are excluded.
 
+## Tap Practice count-in
+
+Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
+
+Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
+
 ## Included assets and credits
 
 - Bravura music font, Steinberg Media Technologies: SIL Open Font License 1.1. See `fonts/Bravura-LICENSE.txt`.
