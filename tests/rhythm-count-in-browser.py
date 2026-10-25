@@ -84,7 +84,7 @@ class RhythmCountInTests(unittest.TestCase):
   for beat,number in [(8,1),(9,2),(10,3),(11,4)]:
    self.at(beat);self.page.wait_for_function("document.querySelector('#tap-pad').dataset.phase==='count-in'")
    self.assertFalse(self.state()['disabled']);self.assertIn(str(number),self.page.locator('#status').inner_text())
-   before=self.page.evaluate('__audioProbe.buffers.length');self.pointer();self.space();self.assertEqual(self.page.evaluate('__audioProbe.buffers.length'),before+2,'Warm-up pointer and Space both use the recorded snare');r=self.state()['round'];self.assertEqual(r['taps'],[]);self.assertEqual(r['matched'],[]);self.assertEqual(r['extras'],0)
+   self.at(beat+.05);before=self.page.evaluate('__audioProbe.buffers.length');self.pointer();self.space();self.assertEqual(self.page.evaluate('__audioProbe.buffers.length'),before+2,'Warm-up pointer and Space both use the recorded snare');r=self.state()['round'];self.assertEqual(r['taps'],[]);self.assertEqual(r['matched'],[]);self.assertEqual(r['extras'],0)
   self.assertEqual(self.state()['history'],[]);self.assertEqual(self.state()['reports'],[])
   self.at(12);self.assertEqual(self.state()['phase'],'play')
   self.at(20);self.assertEqual(len(self.state()['history']),1)
