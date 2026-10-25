@@ -31,6 +31,10 @@ Tap Practice listens for two bars, gives you a four-beat count-in, then starts y
 
 Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
 
+## Classroom privacy
+
+Rhythm Room keeps gameplay local and does not use Firebase or public score services. When embedded in a same-origin Coda classroom, it inherits the parent's scoped progress store before reading practice history, and reports completed rounds through the existing arcade bridge. Standalone play remains local.
+
 ## Included assets and credits
 
 - Bravura music font, Steinberg Media Technologies: SIL Open Font License 1.1. See `fonts/Bravura-LICENSE.txt`.
