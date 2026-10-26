@@ -14,7 +14,7 @@ Open http://localhost:8000 in a modern browser and press **Start loop** to enabl
 
 ## GitHub Pages
 
-1. Create a GitHub repository and upload the contents of this folder. Keep `index.html`, `audio/`, and `fonts/` at the repository root.
+1. Create a GitHub repository and upload the contents of this folder. Keep `index.html`, the JavaScript/CSS files, and the bundled font/audio files together at the repository root.
 2. In the repository, open **Settings → Pages**.
 3. Choose **Deploy from a branch**, then select `main` and `/ (root)` and save.
 4. Open the Pages link shown by GitHub once deployment completes.
@@ -27,7 +27,7 @@ Single eighth notes unlock basic syncopations when the other required note types
 
 ## Tap Practice count-in
 
-Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
+Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. A delayed input event cannot reopen an already completed round or report its rewards twice. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
 
 A large **1 → 2 → READY → GO!** appears over the screen before every Tap
 Practice turn, one cue per preparation beat: GO appears on count four and the
@@ -36,7 +36,7 @@ translucent with no panel behind them, keeping the notation visible. Tapping
 stays enabled, including in fullscreen and on phones. The countdown does not
 appear in Listen & Follow.
 
-Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
+Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` and `python3 tests/rhythm-session-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
 
 ## Note streaks and perfect rounds
 
@@ -63,8 +63,8 @@ Rhythm Room keeps gameplay local and does not use Firebase or public score servi
 
 ## Included assets and credits
 
-- Bravura music font, Steinberg Media Technologies: SIL Open Font License 1.1. See `fonts/Bravura-LICENSE.txt`.
-- Acoustic snare, Karoryfer Samples / Frankensnare: CC0. See `audio/LICENSE-Frankensnare.txt`.
-- Recorded piano and organ, Versilian Studios / VSO2, distributed by Nicholaus Brosowsky's tonejs-instruments: CC BY 3.0. See `audio/CREDITS.txt` and `audio/organ-source-info.txt`.
+- Bravura music font, Steinberg Media Technologies: SIL Open Font License 1.1. See `Bravura-LICENSE.txt`.
+- Acoustic snare, Karoryfer Samples / Frankensnare: CC0. See `LICENSE-Frankensnare.txt`.
+- Recorded piano and organ, Versilian Studios / VSO2, distributed by Nicholaus Brosowsky's tonejs-instruments: CC BY 3.0. See `CREDITS.txt` and `organ-source-info.txt`.
 
-Keep the bundled asset credits and licenses with redistributed copies.
+The app loads these bundled files directly, so browsers can cache the font and recordings separately from the page. Keep the bundled asset credits and licenses with redistributed copies.
