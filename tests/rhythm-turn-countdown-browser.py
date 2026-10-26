@@ -6,6 +6,7 @@ remain active. Public services are blocked and no student profiles are used.
 """
 import importlib.util
 from pathlib import Path
+import re
 import sys
 import unittest
 
@@ -57,22 +58,38 @@ class RhythmTurnCountdownTests(unittest.TestCase):
         self.assertTrue(self.page.locator('#rhythm-perfect').is_hidden())
         self.assertTrue(self.page.locator('#rhythm-confetti').is_hidden())
 
-    def test_your_turn_has_big_cues_and_go_marks_the_actual_first_beat(self):
+    def assert_translucent(self, overlay):
+        style = overlay.evaluate('''node=>{const style=getComputedStyle(node);return {
+          opacity:Number(style.opacity),background:style.backgroundColor,
+          image:style.backgroundImage,blur:style.backdropFilter,pointer:style.pointerEvents
+        }}''')
+        self.assertGreater(style['opacity'], 0)
+        self.assertLess(style['opacity'], 1, 'The lettering itself lets notation show through')
+        self.assertIn(style['blur'], ['none', ''], 'The underlying staff must stay sharp')
+        self.assertEqual(style['pointer'], 'none')
+        paints = re.findall(r'rgba?\(([^)]+)\)', style['background'] + ' ' + style['image'])
+        self.assertTrue(paints, 'Inspect the actual rendered backdrop paint')
+        for paint in paints:
+            channels = paint.split(',')
+            alpha = float(channels[-1]) if len(channels) == 4 else 1
+            self.assertLess(alpha, .5, 'An opaque backdrop would cover the music staff')
+
+    def test_your_turn_has_four_big_cues_and_go_is_the_fourth_count(self):
         self.select(count=True)
         self.start()
         for beat in [-3.5, -2.5, -.5, 0, 4, 7.9]:
             self.at(beat)
             self.assertTrue(self.countdown().is_hidden(),
                             'Initial listening count-in and listening are not the player countdown')
-        for beat, text in [(8, '1'), (9, '2'), (10, 'READY'), (11, 'READY')]:
+        for beat, text in [(8, '1'), (9, '2'), (10, 'READY'), (11, 'GO')]:
             self.at(beat)
             self.assert_cue(text)
             self.assertEqual(self.state()['phase'], 'count-in')
         self.at(12)
-        self.assert_cue('GO')
+        self.assertTrue(self.countdown().is_hidden(), 'The four-beat overlay clears when tapping begins')
         self.assertEqual(self.state()['phase'], 'play')
         self.assertTrue(self.page.locator('#n0.active').is_visible(),
-                        'The real notation still highlights the first playable pitch')
+                        'The real notation still highlights the first playable note')
         self.at(13)
         self.assertTrue(self.countdown().is_hidden())
         self.assertEqual(self.state()['history'], [])
@@ -151,6 +168,8 @@ class RhythmTurnCountdownTests(unittest.TestCase):
                 self.assertIn('PERFECT', self.page.locator('#rhythm-perfect').inner_text())
                 self.assertFalse(self.page.locator('#rhythm-confetti').is_hidden())
                 self.assertEqual(self.state()['history'][-1]['missed'], 0)
+                self.assert_translucent(self.page.locator('#rhythm-perfect'))
+                self.assertTrue(self.page.locator('#staff').is_visible())
                 self.page.locator('#stop').click()
 
     def test_missed_note_or_extra_tap_does_not_award_a_perfect_round(self):
@@ -192,6 +211,8 @@ class RhythmTurnCountdownTests(unittest.TestCase):
                 self.at(9.2)
                 self.page.locator('#tap-pad').scroll_into_view_if_needed()
                 self.assert_cue('2')
+                self.assert_translucent(self.countdown())
+                self.assertTrue(self.page.locator('#staff').is_visible())
                 cue = self.countdown().locator('strong')
                 self.assertGreaterEqual(cue.evaluate('node=>parseFloat(getComputedStyle(node).fontSize)'), 64)
                 box = cue.bounding_box()
@@ -211,6 +232,10 @@ class RhythmTurnCountdownTests(unittest.TestCase):
         self.page.set_viewport_size({'width': 390, 'height': 844})
         self.at(10.2)
         self.page.screenshot(path='/tmp/rhythm-turn-countdown-mobile.png')
+        self.page.set_viewport_size({'width': 1400, 'height': 1050})
+        self.at(11.2)
+        self.assert_cue('GO')
+        self.page.screenshot(path='/tmp/rhythm-turn-countdown-desktop.png')
 
     def test_reduced_motion_keeps_the_big_cue_and_static_perfect_feedback(self):
         self.page.emulate_media(reduced_motion='reduce')

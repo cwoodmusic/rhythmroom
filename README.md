@@ -30,9 +30,11 @@ Single eighth notes unlock basic syncopations when the other required note types
 Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
 
 A large **1 → 2 → READY → GO!** appears over the screen before every Tap
-Practice turn. READY holds through the last two preparation beats; GO lands on
-the actual first playable beat. The overlay leaves tapping enabled and works
-in fullscreen and on phones. It does not appear in Listen & Follow.
+Practice turn, one cue per preparation beat: GO appears on count four and the
+overlay clears when playing starts. The countdown and PERFECT text are
+translucent with no panel behind them, keeping the notation visible. Tapping
+stays enabled, including in fullscreen and on phones. The countdown does not
+appear in Listen & Follow.
 
 Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
 

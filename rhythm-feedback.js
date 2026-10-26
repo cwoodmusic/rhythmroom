@@ -10,21 +10,20 @@
    const countdown=doc.createElement('div');countdown.id='rhythm-count-in';countdown.className='rhythm-count-in';countdown.hidden=true;countdown.setAttribute('aria-hidden','true');
    const countHeading=doc.createElement('strong'),countDetail=doc.createElement('span');countdown.append(countHeading,countDetail);
    const media=scope.matchMedia?.('(prefers-reduced-motion: reduce)'),colors=['#75f8ff','#ff78c8','#ffe58e','#c7a4ff','#9affbe'];
-   let frame=null,timer=null,context=null,particles=[],lastTime=0,started=0,width=0,height=0,disposed=false,preparedRound=null,countCue='';
+   let frame=null,timer=null,context=null,particles=[],lastTime=0,started=0,width=0,height=0,disposed=false,countCue='';
    function syncHost(){const host=doc.fullscreenElement||doc.webkitFullscreenElement||doc.body;if(canvas.parentNode!==host)host.append(canvas,badge,countdown);}
    syncHost();
    function motionAllowed(){if(media?.matches)return false;try{if(scope.localStorage.getItem('arcadeAnimations')==='off')return false;}catch{}return true;}
    function stopParticles(){if(frame!==null)scope.cancelAnimationFrame(frame);frame=null;particles=[];canvas.hidden=true;canvas.width=canvas.height=1;context=null;}
    function hideCountIn(){countdown.hidden=true;countCue='';countHeading.textContent='';countDetail.textContent='';}
-   function cancel(){if(timer!==null)scope.clearTimeout(timer);timer=null;stopParticles();badge.hidden=true;hideCountIn();preparedRound=null;}
+   function cancel(){if(timer!==null)scope.clearTimeout(timer);timer=null;stopParticles();badge.hidden=true;hideCountIn();}
    function renderCountIn(position,enabled){
-     if(disposed||!enabled||doc.hidden){hideCountIn();preparedRound=null;return false;}
+     if(disposed||!enabled||doc.hidden){hideCountIn();return false;}
      let cue='';
      if(position?.kind==='count-in'&&Number.isInteger(position.index)&&position.index>=0&&Number.isInteger(position.count)&&position.count>=1&&position.count<=4){
-       preparedRound=position.index;cue=position.count===1?'1':position.count===2?'2':'READY!';
-     }else if(position?.kind==='play'&&preparedRound!==null&&position.index===preparedRound&&position.beat>=0&&position.beat<1)cue='GO!';
-     else{hideCountIn();preparedRound=null;return false;}
-     syncHost();if(cue!==countCue){countCue=cue;countHeading.textContent=cue;countDetail.textContent=cue==='GO!'?'Tap the rhythm!':'Your turn is next';countdown.dataset.cue=cue==='GO!'?'go':cue==='READY!'?'ready':'count';}countdown.hidden=false;return true;
+       cue=['1','2','READY!','GO!'][position.count-1];
+     }else{hideCountIn();return false;}
+     syncHost();if(cue!==countCue){countCue=cue;countHeading.textContent=cue;countDetail.textContent='Your turn is next';countdown.dataset.cue=cue==='GO!'?'go':cue==='READY!'?'ready':'count';}countdown.hidden=false;return true;
    }
    function draw(time){
      frame=null;if(disposed||doc.hidden||!context){cancel();return;}
