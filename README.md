@@ -29,6 +29,11 @@ Single eighth notes unlock basic syncopations when the other required note types
 
 Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
 
+A large **1 → 2 → READY → GO!** appears over the screen before every Tap
+Practice turn. READY holds through the last two preparation beats; GO lands on
+the actual first playable beat. The overlay leaves tapping enabled and works
+in fullscreen and on phones. It does not appear in Listen & Follow.
+
 Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
 
 ## Note streaks and perfect rounds
@@ -40,13 +45,15 @@ count-in warmups and written rests do not add notes or break a streak.
 Missing a note or adding an extra tap resets the counter. Stop, changing modes,
 or changing the rhythm/tempo starts a new streak, while the visit's best remains.
 
-A completed round celebrates with a confetti splash when every note is matched
-and there are no misses, extra taps, or early/late timing marks. All-rest rounds
+A completed round celebrates with a large **PERFECT!** and confetti when every
+note is matched and there are no misses or extra taps. Accepted early/late hits
+still count; their timing tips remain in the practice tracker. All-rest rounds
 do not trigger confetti. The effect does not interrupt input or add sounds.
 Reduced motion, or the arcade's saved Motion: Off setting, uses a static perfect
 badge. Effects stop when the loop stops or the page is hidden.
 
-Feedback checks: `python3 tests/rhythm-feedback-browser.py`.
+Feedback checks: `python3 tests/rhythm-feedback-browser.py` and
+`python3 tests/rhythm-turn-countdown-browser.py`.
 
 ## Classroom privacy
 

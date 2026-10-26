@@ -124,7 +124,7 @@ class RhythmFeedbackTests(unittest.TestCase):
         self.assert_quiet_feedback()
         self.assertFalse(self.state()['reports'][0]['result']['perfect'])
 
-    def test_early_or_late_matched_note_counts_for_streak_but_not_perfect_confetti(self):
+    def test_accepted_early_or_late_matched_note_earns_perfect_confetti(self):
         for offset in [-.10, .10]:
             with self.subTest(offset=offset):
                 if self.page.locator('#home').is_visible():
@@ -139,8 +139,9 @@ class RhythmFeedbackTests(unittest.TestCase):
                 self.assertEqual(report['hits'], report['total'])
                 self.assertEqual(report['extra'], 0)
                 self.assertGreater(report['early'] + report['late'], 0)
-                self.assertFalse(report['perfect'])
-                self.assert_quiet_feedback()
+                self.assertTrue(report['perfect'])
+                self.assertTrue(self.page.locator('#rhythm-perfect').is_visible())
+                self.assertFalse(self.page.locator('#rhythm-confetti').is_hidden())
                 self.page.locator('#stop').click()
 
     def test_extra_tap_after_all_notes_prevents_perfect_splash(self):
