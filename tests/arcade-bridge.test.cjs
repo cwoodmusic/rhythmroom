@@ -5,7 +5,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const html=fs.readFileSync(path.join(__dirname,'../index.html'),'utf8');
 const source=html.match(/<script>(\/\/ Coda Arcade bridge v1:[\s\S]*?)<\/script>/)?.[1];
 assert.ok(source,'The production inline bridge must be present');
-const trusted=['https://cwoodmusic.github.io','https://music-arcade.aquajelly16.chatgpt.site','https://www.coda-aracde.com'];
+const trusted=['https://cwoodmusic.github.io','https://music-arcade.aquajelly16.chatgpt.site','https://www.coda-arcade.com','https://coda-arcade.com','https://www.coda-aracde.com','https://coda-aracde.com'];
 function frame(standalone=false){
  const messages=[],listeners=new Map(),parent={postMessage:(data,origin)=>messages.push({data,origin})};
  const document={documentElement:{dataset:{codaGame:'rhythm'}}};
@@ -31,7 +31,7 @@ test('new custom domain and both original origins can initialize the rhythm resu
 test('lookalike origins, other senders, wrong games and invalid tokens cannot receive results',()=>{
  const env=frame();env.bridge.report('domain-round',result);
  const good={source:env.parent,origin:trusted[2],data:{coda:1,type:'init',game:'rhythm',token:'domain-session'}};
- for(const origin of ['https://www.coda-arcade.com','https://coda-arcade.com','http://www.coda-aracde.com','https://www.coda-aracde.com.evil.invalid','https://coda-aracde.com','https://www.coda-aracde.com:444','https://cwoodmusic.github.io.evil.invalid'])env.receive({...good,origin});
+ for(const origin of ['http://www.coda-arcade.com','http://coda-arcade.com','http://www.coda-aracde.com','http://coda-aracde.com','https://www.coda-arcade.com.evil.invalid','https://coda-arcade.com.evil.invalid','https://other.coda-arcade.com','https://www.coda-aracde.com.evil.invalid','https://coda-aracde.com.evil.invalid','https://www.coda-arcade.com:444','https://coda-arcade.com:444','https://www.coda-aracde.com:444','https://coda-aracde.com:444','https://cwoodmusic.github.io.evil.invalid'])env.receive({...good,origin});
  env.receive({...good,source:{}});env.receive({...good,data:{...good.data,game:'pitch'}});
  env.receive({...good,data:{...good.data,token:null}});env.receive({...good,data:{...good.data,token:'x'.repeat(101)}});
  assert.equal(env.messages.filter(m=>m.data.type==='result').length,0);
