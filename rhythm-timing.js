@@ -2,15 +2,29 @@
 (function(root,factory){const api=factory();if(typeof module==='object'&&module.exports)module.exports=api;if(root)root.RhythmRoomTiming=api;})(typeof window==='undefined'?null:window,function(){
  'use strict';
  const LISTEN_BEATS=8,COUNT_BEATS=4,PLAY_BEATS=8,ROUND_BEATS=20,FOLLOW_BEATS=16,OPENING_GRACE=.22;
- function phaseAt(beat,tapMode=true){
-  if(beat<0)return {kind:'initial-count',index:0,beat:beat+COUNT_BEATS,count:Math.max(1,Math.min(4,Math.floor(beat+4)+1))};
-  if(!tapMode){const index=Math.floor(beat/FOLLOW_BEATS),local=beat-index*FOLLOW_BEATS;return local<LISTEN_BEATS?{kind:'listen',index,beat:local}:{kind:'play',index,beat:local-LISTEN_BEATS};}
-  const index=Math.floor(beat/ROUND_BEATS),local=beat-index*ROUND_BEATS;
-  if(local<LISTEN_BEATS)return {kind:'listen',index,beat:local};
-  if(local<LISTEN_BEATS+COUNT_BEATS)return {kind:'count-in',index,beat:local-LISTEN_BEATS,count:Math.floor(local-LISTEN_BEATS)+1};
-  return {kind:'play',index,beat:local-LISTEN_BEATS-COUNT_BEATS};
+ // Positions always use quarter-note units. Tempo is measured in the meter's
+ // main pulse: a quarter, a half, or a dotted quarter respectively.
+ const TIMELINES=Object.freeze(Object.fromEntries([
+  ['4/4',4,1],['2/2',4,2],['6/8',3,1.5]
+ ].map(([id,measureBeats,pulseBeats])=>[id,Object.freeze({
+  measureBeats,pulseBeats,listenBeats:measureBeats*2,countBeats:pulseBeats*4,
+  playBeats:measureBeats*2,roundBeats:measureBeats*4+pulseBeats*4,
+  followBeats:measureBeats*4
+ })])));
+ const getTimeline=(meter='4/4')=>typeof meter==='string'&&Object.hasOwn(TIMELINES,meter)?TIMELINES[meter]:TIMELINES['4/4'];
+ function phaseAt(beat,tapMode=true,meter='4/4'){
+  const timeline=getTimeline(meter),{listenBeats,countBeats,roundBeats,followBeats,pulseBeats}=timeline;
+  if(beat<0)return {kind:'initial-count',index:0,beat:beat+countBeats,count:Math.max(1,Math.min(4,Math.floor((beat+countBeats)/pulseBeats)+1))};
+  if(!tapMode){const index=Math.floor(beat/followBeats),local=beat-index*followBeats;return local<listenBeats?{kind:'listen',index,beat:local}:{kind:'play',index,beat:local-listenBeats};}
+  const index=Math.floor(beat/roundBeats),local=beat-index*roundBeats;
+  if(local<listenBeats)return {kind:'listen',index,beat:local};
+  if(local<listenBeats+countBeats)return {kind:'count-in',index,beat:local-listenBeats,count:Math.floor((local-listenBeats)/pulseBeats)+1};
+  return {kind:'play',index,beat:local-listenBeats-countBeats};
  }
- const playerStartBeat=(index,tapMode=true)=>index*(tapMode?ROUND_BEATS:FOLLOW_BEATS)+LISTEN_BEATS+(tapMode?COUNT_BEATS:0);
+ function playerStartBeat(index,tapMode=true,meter='4/4'){
+  const {roundBeats,followBeats,listenBeats,countBeats}=getTimeline(meter);
+  return index*(tapMode?roundBeats:followBeats)+listenBeats+(tapMode?countBeats:0);
+ }
  function inputTime(audioNow,eventStamp,performanceNow){
   const age=(performanceNow-eventStamp)/1000;
   return Number.isFinite(age)&&age>=0&&age<=.25?Math.max(0,audioNow-age):audioNow;
@@ -32,5 +46,5 @@
   (round.taps??=[]).push(value);if(hit)round.matched.add(nearest);else round.extras++;
   return {hit,error,openingGrace};
  }
- return Object.freeze({LISTEN_BEATS,COUNT_BEATS,PLAY_BEATS,ROUND_BEATS,FOLLOW_BEATS,OPENING_GRACE,phaseAt,playerStartBeat,inputTime,grade});
+ return Object.freeze({LISTEN_BEATS,COUNT_BEATS,PLAY_BEATS,ROUND_BEATS,FOLLOW_BEATS,OPENING_GRACE,getTimeline,phaseAt,playerStartBeat,inputTime,grade});
 });

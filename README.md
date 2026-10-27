@@ -27,7 +27,19 @@ Single eighth notes unlock basic syncopations when the other required note types
 
 ## Tap Practice count-in
 
-Tap Practice listens for two bars, gives you a four-beat count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. A delayed input event cannot reopen an already completed round or report its rewards twice. Play Along retains its original listen/play timing. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
+Tap Practice listens for two bars, gives you a four-pulse count-in, then starts your two-bar turn. Tap along during the count without penalties. A tap close to the opening downbeat can match the first note early; the immediate handoff does not add an accidental extra tap. A delayed input event cannot reopen an already completed round or report its rewards twice. Listen & Follow retains its listen/play timing without that extra preparation phase. The optional initial count-in remains separate. Acoustic snare is the default recorded instrument.
+
+Choose **4/4**, **2/2 (cut time)**, or **6/8** from Time signature. Tempo and the
+metronome follow quarter-note, half-note, or dotted-quarter beats respectively.
+Each rhythm fills two measures in that meter; incompatible whole notes are
+unavailable in 6/8. Notes beam in the selected meter's beat groups.
+
+The **Counting guide** highlights syllables on the same audio clock as the
+notation, including through rests. Auto chooses the necessary subdivision;
+you can also select big beats, `1 & 2 &`, `1 e & a`, or Off. In 6/8 it uses
+`1 la li 2 la li`, with additional `&` subdivisions for sixteenths. In cut time,
+`1 & 2 &` counts quarter notes and `1 e & a` counts eighth notes. Changing the
+guide leaves playback running; changing the meter stops and regenerates the rhythm.
 
 A large **1 → 2 → READY → GO!** appears over the screen before every Tap
 Practice turn, one cue per preparation beat: GO appears on count four and the
@@ -37,6 +49,8 @@ stays enabled, including in fullscreen and on phones. The countdown does not
 appear in Listen & Follow.
 
 Timing checks: `node --test tests/*.test.cjs` and `python3 tests/rhythm-count-in-browser.py` and `python3 tests/rhythm-session-browser.py` (Python Playwright and Chromium). Browser tests block external services and use a disposable profile.
+
+Meter and counting checks: `python3 tests/rhythm-meters-browser.py`.
 
 ## Note streaks and perfect rounds
 
