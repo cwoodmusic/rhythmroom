@@ -16,6 +16,31 @@
  const getMeter=value=>METERS[typeof value==='string'?value:value?.id]||METERS['4/4'];
  const onGrid=(value,step)=>Math.abs(value/step-Math.round(value/step))<EPS;
  const blockUnits=block=>block.notes.reduce((total,value)=>total+Math.abs(value)*8,0);
+ // Compound time gets its own vocabulary. Each short block fills one
+ // dotted-quarter pulse; dotted halves fill both pulses of a complete bar.
+ // Sixteenths replace an eighth in pairs, never as isolated single notes.
+ const COMPOUND_BLOCKS=[
+  {id:'compound-dotted-half',name:'Dotted half note',notes:[3],group:'basic'},
+  {id:'compound-dotted-quarter',name:'Dotted quarter note',notes:[1.5],group:'basic'},
+  {id:'compound-eighth-quarter',name:'Eighth + quarter',notes:[.5,1],group:'basic'},
+  {id:'compound-quarter-eighth',name:'Quarter + eighth',notes:[1,.5],group:'basic'},
+  {id:'compound-three-eighths',name:'Three eighth notes',notes:[.5,.5,.5],group:'basic'},
+  {id:'compound-two-sixteenths-eighth-eighth',name:'Two sixteenths + two eighths',notes:[.25,.25,.5,.5],group:'advanced'},
+  {id:'compound-eighth-two-sixteenths-eighth',name:'Eighth + two sixteenths + eighth',notes:[.5,.25,.25,.5],group:'advanced'},
+  {id:'compound-eighth-eighth-two-sixteenths',name:'Two eighths + two sixteenths',notes:[.5,.5,.25,.25],group:'advanced'},
+  {id:'compound-four-sixteenths-eighth',name:'Four sixteenths + eighth',notes:[.25,.25,.25,.25,.5],group:'advanced'},
+  {id:'compound-eighth-four-sixteenths',name:'Eighth + four sixteenths',notes:[.5,.25,.25,.25,.25],group:'advanced'},
+  {id:'compound-two-sixteenths-eighth-two-sixteenths',name:'Two sixteenths + eighth + two sixteenths',notes:[.25,.25,.5,.25,.25],group:'advanced'},
+  {id:'compound-six-sixteenths',name:'Six sixteenth notes',notes:[.25,.25,.25,.25,.25,.25],group:'advanced'},
+  {id:'compound-quarter-two-sixteenths',name:'Quarter + two sixteenths',notes:[1,.25,.25],group:'advanced'},
+  {id:'compound-two-sixteenths-quarter',name:'Two sixteenths + quarter',notes:[.25,.25,1],group:'advanced'},
+  {id:'compound-dotted-half-rest',name:'Dotted half rest',notes:[-3],preview:[-3],group:'rests',keepRestValue:true},
+  {id:'compound-dotted-quarter-rest',name:'Dotted quarter rest',notes:[-1.5],preview:[-1.5],group:'rests',keepRestValue:true},
+  {id:'compound-quarter-rest',name:'Quarter rest',notes:[-1,.5],variants:[[-1,.5],[.5,-1]],preview:[-1],group:'rests',keepRestValue:true},
+  {id:'compound-eighth-rest',name:'Eighth rest',notes:[-.5,1],variants:[[-.5,1],[1,-.5],[-.5,.5,.5],[.5,-.5,.5],[.5,.5,-.5]],preview:[-.5],group:'rests',keepRestValue:true}
+ ];
+ const freeze=value=>{if(value&&typeof value==='object'){for(const child of Object.values(value))freeze(child);Object.freeze(value);}return value;};
+ freeze(COMPOUND_BLOCKS);
 
  function expandedPool(selection,meter='4/4'){
   const m=getMeter(meter),pool=selection.filter(block=>Array.isArray(block.notes)&&block.notes.length);
@@ -113,8 +138,9 @@
   for(let i=0;i<notes.length;){
    const note=notes[i];
    if(!note.rest){result.push(note);i++;continue;}
+   if(note.keepRestValue){result.push(note);i++;continue;}
    let end=note.beat+note.duration,j=i+1;
-   while(j<notes.length&&notes[j].rest&&Math.abs(notes[j].beat-end)<EPS){end=notes[j].beat+notes[j].duration;j++;}
+   while(j<notes.length&&notes[j].rest&&!notes[j].keepRestValue&&Math.abs(notes[j].beat-end)<EPS){end=notes[j].beat+notes[j].duration;j++;}
    let beat=note.beat;
    while(beat<end-EPS){
     const bar=Math.floor((beat+EPS)/m.measureBeats),barEnd=(bar+1)*m.measureBeats;
@@ -187,11 +213,41 @@
   return {...pattern.tokens[index],measure:Math.floor(beat/m.measureBeats)+1};
  }
 
+ // Read the rhythm that is actually written. Short notes/rests get only their
+ // onset syllable. Longer holds also show each main beat that passes inside
+ // them, without inventing unused eighth/sixteenth-note subdivisions.
+ function rhythmCounts(notes=[],meter='4/4'){
+  const m=getMeter(meter),events=[];let cursor=0;
+  for(const note of notes){
+   if(Array.isArray(note?.notes)){
+    for(const value of note.notes){events.push({beat:cursor,duration:Math.abs(value),rest:value<0});cursor+=Math.abs(value);}
+   }else{
+    const duration=Math.abs(typeof note==='number'?note:note?.duration??note?.value??0);
+    const beat=Number.isFinite(note?.beat)?note.beat:cursor;
+    if(!Number.isFinite(duration)||duration<=0||!Number.isFinite(beat)||beat<0)continue;
+    events.push({beat,duration,rest:typeof note==='number'?note<0:note.rest===true||note.value<0});cursor=beat+duration;
+   }
+  }
+  const result=[];
+  const append=(beat,note,noteIndex,held=false)=>{
+   const counted=countAt(beat,[],m,'sixteenths');
+   result.push({text:counted.text,beat,rest:note.rest,index:result.length,noteIndex,held});
+  };
+  events.forEach((note,noteIndex)=>{
+   append(note.beat,note,noteIndex);
+   if(note.duration>m.pulseBeats+EPS){
+    const end=note.beat+note.duration;
+    for(let beat=(Math.floor((note.beat+EPS)/m.pulseBeats)+1)*m.pulseBeats;beat<end-EPS;beat+=m.pulseBeats)append(beat,note,noteIndex,true);
+   }
+  });
+  return result;
+ }
+
  function beatLabel(beat,meter='4/4'){
   const m=getMeter(meter),token=countAt(Math.max(0,beat),[],m,'sixteenths');
   const part=token.part===0?'':' '+token.text;
   return `measure ${token.measure}, beat ${token.pulse}${part}`;
  }
 
- return Object.freeze({METERS,getMeter,expandedPool,blockUnits,validStart,nextRhythmState,fillTable,generatePhrase,consolidateRests,notationBeams,countPattern,countAt,beatLabel});
+ return Object.freeze({METERS,COMPOUND_BLOCKS,getMeter,expandedPool,blockUnits,validStart,nextRhythmState,fillTable,generatePhrase,consolidateRests,notationBeams,countPattern,countAt,rhythmCounts,beatLabel});
 });

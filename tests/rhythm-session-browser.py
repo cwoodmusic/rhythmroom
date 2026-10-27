@@ -48,7 +48,7 @@ class RhythmSessionTests(unittest.TestCase):
                                  ('piano', 'piano-C4.mp3'),
                                  ('organ', 'organ-C4.mp3')]:
             with self.subTest(instrument=instrument):
-                self.page.locator('#sound').select_option(instrument)
+                fixture.RhythmCountInTests.configure(self,sound=instrument)
                 before = self.page.evaluate('__audioProbe.buffers.length')
                 self.page.locator('#play').click()
                 self.page.wait_for_function('running&&!loading&&ctx')

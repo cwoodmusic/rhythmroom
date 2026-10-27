@@ -1,4 +1,4 @@
-"""Meter, subdivision counting, and real tap input on the native audio clock.
+"""Meter, counts under the written rhythm, and real tap input on the native audio clock.
 
 Only AudioContext.currentTime is controlled. The production rhythm generator,
 notation, audio scheduling, input, grading, streaks, and reward bridge remain
@@ -46,16 +46,29 @@ class RhythmMetersTests(unittest.TestCase):
             extras:tapRound.extras,taps:tapRound.taps}:null,
           history:practiceHistory,reports:__reports})''')
 
+    def choose_meter(self,meter):
+        self.page.locator('#time-signature-control').click()
+        self.page.locator('[data-meter-choice="'+meter+'"]').click()
+
+    def configure(self,**values):
+        return fixture.RhythmCountInTests.configure(self,**values)
+
     def choose(self, meter='4/4', blocks=None, mode='tap', count=False):
         if self.page.locator('#home').is_visible():
             self.page.locator('#choose-' + ('tap' if mode == 'tap' else 'follow')).click()
-        self.page.locator('#meter').select_option(meter)
-        self.page.locator('#count').set_checked(count)
+        RhythmMetersTests.choose_meter(self,meter)
+        RhythmMetersTests.configure(self,count=count)
         selected = blocks or ['quarter' if meter == '4/4' else
-                              'half' if meter == '2/2' else 'dotted-quarter']
+                              'half' if meter == '2/2' else 'compound-dotted-quarter']
+        if meter=='6/8':
+            aliases={'eighth':'compound-three-eighths','eighths':'compound-three-eighths','quarter':'compound-quarter-eighth','dotted-quarter':'compound-dotted-quarter','sixteenths':'compound-six-sixteenths'}
+            selected=[aliases.get(value,value) for value in selected]
+            if any(value in selected for value in self.page.evaluate("RhythmRoomMeter.COMPOUND_BLOCKS.filter(b=>b.group==='advanced').map(b=>b.id)")):
+                self.page.locator('#compound-advanced').evaluate('node=>node.open=true')
         for checkbox in self.page.locator('#choices input[type=checkbox]').all():
             if checkbox.is_enabled():
-                checkbox.set_checked(checkbox.get_attribute('id').removeprefix('choose-') in selected)
+                desired=checkbox.get_attribute('id').removeprefix('choose-') in selected
+                if checkbox.is_checked()!=desired:checkbox.set_checked(desired)
         self.page.locator('#generate').click()
         self.assertFalse(self.page.locator('#play').is_disabled(),
                          'A compatible rhythm selection must be playable')
@@ -70,10 +83,10 @@ class RhythmMetersTests(unittest.TestCase):
             self.page.wait_for_timeout(45)
 
     def count_tokens(self):
-        return self.page.locator('#rhythm-counting [data-count-index]').all_text_contents()
+        return self.page.locator('#staff #rhythm-counts [data-count-index]').evaluate_all("nodes=>nodes.filter(node=>Number(node.dataset.countBeat)<currentMeter().measureBeats).map(node=>node.textContent)")
 
     def active_count(self):
-        return self.page.locator('#rhythm-counting [data-count-index].active').all_text_contents()
+        return self.page.locator('#staff #rhythm-counts [data-count-index].active').all_text_contents()
 
     def test_meter_choice_changes_real_notation_and_measure_lengths(self):
         for meter, spec in METERS.items():
@@ -82,10 +95,10 @@ class RhythmMetersTests(unittest.TestCase):
                 score = self.page.evaluate('''()=>({
                   measures:staffLayout.measures.map(m=>m.notes.map(n=>({
                     beat:n.beat,duration:n.duration,rest:n.rest}))),
-                  glyphs:[...document.querySelectorAll('#staff text.music-glyph')]
-                    .map(node=>node.textContent),
+                  glyphs:[...document.querySelectorAll('#staff [data-time-signature]')]
+                    .map(node=>node.dataset.glyph),
                   description:document.querySelector('#staff').getAttribute('aria-label'),
-                  counts:[...document.querySelectorAll('#staff .beatbox')].length
+                  counts:[...document.querySelectorAll('#staff #rhythm-counts text')].length,oldBoxes:document.querySelectorAll('#staff .beatbox').length,separateGuide:!!document.querySelector('#rhythm-counting')
                 })''')
                 self.assertEqual(len(score['measures']), 2)
                 for bar, notes in enumerate(score['measures']):
@@ -102,7 +115,9 @@ class RhythmMetersTests(unittest.TestCase):
                 self.assertIn(chr(0xE080 + int(numerator)), score['glyphs'])
                 self.assertIn(chr(0xE080 + int(denominator)), score['glyphs'])
                 self.assertEqual(score['counts'], 8 if meter == '4/4' else 4,
-                                 'Beat markers show primary pulses, not quarter-note units')
+                                 'Long holds keep main-beat counts beneath the staff')
+                self.assertEqual(score['oldBoxes'],0)
+                self.assertFalse(score['separateGuide'],'There is no separate count panel')
 
     def test_eighth_and_sixteenth_counts_track_audio_and_restart_each_measure(self):
         self.choose('4/4', ['eighths'])
@@ -112,8 +127,7 @@ class RhythmMetersTests(unittest.TestCase):
                             (3.51, '&'), (4.01, '1')]:
             self.at(beat)
             self.assertEqual(self.active_count(), [token])
-            self.assertIn('2' if beat >= 4 else '1',
-                          self.page.locator('#counting-measure').inner_text())
+            self.assertEqual(self.page.locator('#rhythm-counts .active').get_attribute('data-count-beat'), str(int(beat) if beat % 1 < .5 else int(beat) + .5))
             before = self.active_count()
             self.page.wait_for_timeout(120)
             self.assertEqual(self.active_count(), before,
@@ -245,19 +259,19 @@ class RhythmMetersTests(unittest.TestCase):
 
     def test_counting_includes_silent_rests_and_can_be_hidden_without_stopping(self):
         self.choose('4/4', ['quarter-rest'])
-        self.page.locator('#counting').select_option('fine')
         self.start()
         self.at(12.51)
-        self.assertEqual(self.active_count(), ['&'])
+        self.assertEqual(self.active_count(), ['(1)'])
         self.assertEqual(self.state()['round']['targets'], [])
         self.assertEqual(self.state()['round']['extras'], 0)
-        self.page.locator('#counting').select_option('off')
+        RhythmMetersTests.configure(self,counting='off')
         self.assertTrue(self.state()['running'])
-        self.assertTrue(self.page.locator('#rhythm-counting').is_hidden())
-        self.page.locator('#counting').select_option('basic')
+        self.assertTrue(self.page.locator('#rhythm-counts').is_hidden())
+        self.assertTrue(self.page.locator('#n0').is_visible())
+        RhythmMetersTests.configure(self,counting='on')
         self.at(13.51)
-        self.assertTrue(self.page.locator('#rhythm-counting').is_visible())
-        self.assertEqual(self.active_count(), ['&'])
+        self.assertTrue(self.page.locator('#rhythm-counts').is_visible())
+        self.assertEqual(self.active_count(), ['(2)'])
         self.assertEqual(self.state()['reports'], [])
 
     def test_changing_meter_stops_previous_audio_and_mobile_controls_remain_usable(self):
@@ -265,7 +279,7 @@ class RhythmMetersTests(unittest.TestCase):
         self.start()
         self.at(9.2)
         self.assertTrue(self.page.locator('#rhythm-count-in').is_visible())
-        self.page.locator('#meter').select_option('6/8')
+        RhythmMetersTests.choose_meter(self,'6/8')
         self.assertFalse(self.state()['running'])
         self.assertFalse(self.state()['loading'])
         self.assertTrue(self.page.evaluate('ctx===null'))
@@ -274,12 +288,12 @@ class RhythmMetersTests(unittest.TestCase):
         self.assertEqual(self.state()['reports'], [])
         self.page.set_viewport_size({'width': 390, 'height': 844})
         self.choose('6/8', ['eighth'])
-        self.page.locator('#counting').select_option('fine')
+        RhythmMetersTests.configure(self,counting='on')
         self.start()
         self.at(7.6)
         self.page.locator('#tap-pad').scroll_into_view_if_needed()
         self.assertFalse(self.page.locator('#tap-pad').is_disabled())
-        for selector in ['#meter', '#counting', '#rhythm-counting']:
+        for selector in ['#time-signature-control', '#practice-settings-button', '.staff']:
             with self.subTest(selector=selector):
                 box = self.page.locator(selector).bounding_box()
                 self.assertGreaterEqual(box['x'], -1)

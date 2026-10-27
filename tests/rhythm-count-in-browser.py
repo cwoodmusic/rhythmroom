@@ -5,6 +5,7 @@ nodes, scheduling, animation frames, DOM input and app grading remain real.
 External services are blocked and no Firebase data is written.
 """
 import mimetypes
+from contextlib import contextmanager
 from pathlib import Path
 import sys
 import unittest
@@ -51,9 +52,22 @@ class RhythmCountInTests(unittest.TestCase):
   finally:self.context.close()
   self.assertEqual(self.errors,[]);self.assertEqual(self.missing,[])
  def state(self):return self.page.evaluate('''()=>({running,loading,practiceMode,origin,count:$('count').checked,spb:60/+$('tempo').value,phase:$('tap-pad').dataset.phase||null,disabled:$('tap-pad').disabled,round:tapRound?{index:tapRound.index,start:tapRound.start,targets:tapRound.targets,matched:[...tapRound.matched],extras:tapRound.extras,taps:tapRound.taps}:null,history:practiceHistory,reports:__reports})''')
+ @contextmanager
+ def settings(self):
+  dialog=self.page.locator('#practice-settings');opened=not dialog.is_visible()
+  if opened:self.page.locator('#practice-settings-button').click()
+  try:yield dialog
+  finally:
+   if opened and dialog.is_visible():self.page.locator('#practice-settings-close').click()
+ def configure(self,**values):
+  with RhythmCountInTests.settings(self):
+   for name,value in values.items():
+    control=self.page.locator('#'+name)
+    if isinstance(value,bool):control.set_checked(value)
+    else:control.select_option(str(value))
  def select(self,mode='tap',count=True,rest=False):
   self.page.locator('#choose-'+('tap' if mode=='tap' else 'follow')).click()
-  self.page.locator('#count').set_checked(count)
+  RhythmCountInTests.configure(self,count=count)
   for node in self.page.locator('#choices input[type=checkbox]').all():node.set_checked(node.get_attribute('id') in (['choose-quarter','choose-quarter-rest'] if rest else ['choose-quarter']))
   if rest:
    self.page.evaluate('''()=>{let i=0;Math.random=()=>i++===0?.999:0}''');self.page.locator('#generate').click()

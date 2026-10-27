@@ -69,6 +69,28 @@ test('the new meters retain rhythmic variety without requiring incompatible long
  assert.ok(!M.expandedPool(select('quarter','eighth'),'6/8').some(b=>b.syncopation),'Do not import the simple-duple syncopation spelling into compound time');
 });
 
+test('the 6/8 catalog uses complete compound groups and pairs of sixteenths, with exactly four rest choices',()=>{
+ const catalog=M.COMPOUND_BLOCKS,basic=catalog.filter(block=>block.group==='basic'),advanced=catalog.filter(block=>block.group==='advanced'),rests=catalog.filter(block=>block.group==='rests');
+ assert.deepEqual(basic.map(block=>block.notes),[[3],[1.5],[.5,1],[1,.5],[.5,.5,.5]]);
+ assert.equal(advanced.length,9);
+ assert.deepEqual(rests.map(block=>block.name),['Dotted half rest','Dotted quarter rest','Quarter rest','Eighth rest']);
+ for(const block of catalog){
+  for(const notes of block.variants||[block.notes]){
+   const duration=notes.reduce((sum,value)=>sum+Math.abs(value),0);assert.ok(duration===1.5||duration===3,block.id);
+   let run=0;for(const value of [...notes,0]){if(value===.25)run++;else if(run){assert.ok([2,4,6].includes(run),block.id);run=0;}}
+   assert.ok(notes.filter(value=>value<0).every(value=>[-3,-1.5,-1,-.5].includes(value)),'No sixteenth or dotted-eighth rests');
+  }
+ }
+ const random=rng(92);
+ for(const selection of [...catalog.map(block=>[block]),catalog])for(let trial=0;trial<10;trial++){
+  const generated=M.generatePhrase(selection,random,'6/8');let beat=0;
+  for(const block of generated){assert.ok(Math.abs(beat/1.5-Math.round(beat/1.5))<1e-8);const duration=block.notes.reduce((sum,value)=>sum+Math.abs(value),0);assert.ok(duration===1.5||duration===3);if(duration===3)assert.equal(beat%3,0);beat+=duration;}
+  assert.equal(beat,6);assertPhrase(generated,'6/8');
+ }
+ const rest=M.consolidateRests([{beat:0,duration:3,value:-3,rest:true,keepRestValue:true}],'6/8');
+ assert.equal(rest[0].value,-3,'A selected dotted half rest keeps its dotted-half picture');
+});
+
 test('beams show quarter, half-note, and dotted-quarter beats correctly and break at rests',()=>{
  const eighths=Array.from({length:12},(_,i)=>({beat:i*.5,duration:.5,rest:false}));
  assert.deepEqual(M.notationBeams(eighths.slice(0,8),'4/4'),[[0,1],[2,3],[4,5],[6,7]]);
@@ -131,6 +153,43 @@ test('timing tips describe the actual meter rather than hardcoded four quarter-n
  assert.equal(M.beatLabel(.5,'6/8'),'measure 1, beat 1 la');
  assert.equal(M.beatLabel(2.5,'6/8'),'measure 1, beat 2 li');
  assert.equal(M.beatLabel(3,'6/8'),'measure 2, beat 1');
+});
+
+test('written rhythm counts use only actual short-note onsets, including the requested mixed bar',()=>{
+ const values=[.5,.25,.25,.5,.5,.25,.25,.25,.25,.5,.5];
+ const counted=M.rhythmCounts(values,'4/4');
+ assert.deepEqual(counted.map(token=>token.text),['1','&','a','2','&','3','e','&','a','4','&']);
+ assert.equal(counted.length,values.length,'Do not fill unused subdivisions with extra syllables');
+ assert.deepEqual(counted.map(token=>token.beat),[0,.5,.75,1,1.5,2,2.25,2.5,2.75,3,3.5]);
+ assert.ok(counted.every((token,index)=>token.index===index&&token.noteIndex===index&&!token.held&&!token.rest));
+ assert.deepEqual(M.rhythmCounts([.75,.25,1,1,1],'4/4').map(token=>token.text),['1','a','2','3','4']);
+});
+
+test('long holds retain main-beat numbers without inventing unused subdivisions',()=>{
+ const whole=M.rhythmCounts([4],'4/4');
+ assert.deepEqual(whole.map(token=>[token.text,token.beat,token.held]),[['1',0,false],['2',1,true],['3',2,true],['4',3,true]]);
+ assert.deepEqual(M.rhythmCounts([2,1,1],'4/4').map(token=>token.text),['1','2','3','4']);
+ assert.deepEqual(M.rhythmCounts([3,1],'4/4').map(token=>token.text),['1','2','3','4']);
+ assert.deepEqual(M.rhythmCounts([1.5,.5,2],'4/4').map(token=>token.text),['1','2','&','3','4']);
+ assert.deepEqual(M.rhythmCounts([-4],'4/4').map(token=>[token.text,token.rest]),[['1',true],['2',true],['3',true],['4',true]]);
+});
+
+test('actual compound and cut-time counts keep their correct big-beat units',()=>{
+ assert.deepEqual(M.rhythmCounts([.5,.5,.5,.5,.5,.5],'6/8').map(token=>token.text),['1','la','li','2','la','li']);
+ assert.deepEqual(M.rhythmCounts([1,.5,1,.5],'6/8').map(token=>token.text),['1','li','2','li']);
+ assert.deepEqual(M.rhythmCounts([3],'6/8').map(token=>[token.text,token.held]),[['1',false],['2',true]]);
+ assert.deepEqual(M.rhythmCounts([2,2],'2/2').map(token=>[token.text,token.held]),[['1',false],['2',false]]);
+ assert.deepEqual(M.rhythmCounts([4],'2/2').map(token=>[token.text,token.held]),[['1',false],['2',true]]);
+ assert.deepEqual(M.rhythmCounts([1,1,1,1],'2/2').map(token=>token.text),['1','&','2','&']);
+ assert.deepEqual(M.rhythmCounts([.5,.5,.5,.5,.5,.5,.5,.5],'2/2').map(token=>token.text),['1','e','&','a','2','e','&','a']);
+});
+
+test('rest onsets stay silent and repeated measures restart the appropriate count',()=>{
+ const notes=[{beat:0,duration:1,rest:false},{beat:1,duration:.5,rest:true},{beat:1.5,duration:.5,rest:false},{beat:2,duration:2,rest:true},{beat:4,duration:4,rest:false}];
+ const count=M.rhythmCounts(notes,'4/4');
+ assert.deepEqual(count.map(token=>[token.text,token.rest]),[['1',false],['2',true],['&',false],['3',true],['4',true],['1',false],['2',false],['3',false],['4',false]]);
+ assert.equal(count[4].held,true);assert.equal(count[4].noteIndex,3);
+ assert.deepEqual(M.rhythmCounts([{notes:[1,.5]},{notes:[-.5,2]}],'4/4').map(token=>token.text),['1','2','&','3','4']);
 });
 
 test('browser and Node expose the same pure module without storage or network use',()=>{
